@@ -62,8 +62,8 @@ COLUMN_CONFIG = {
     "계좌번호": st.column_config.TextColumn("계좌번호", width="medium"),
     "거래일자": st.column_config.TextColumn("거래일자", width="small"),
     "금액": st.column_config.NumberColumn("금액", format="%d", width="small"), # 콤마 자동 생성
-    "과거내역": st.column_config.TextColumn("과거내역", width="large"),
-    "담당자": st.column_config.TextColumn("담당자", width="small"),
+    "과거내역": st.column_config.TextColumn("과거내역", width="medium"),
+    "담당자": st.column_config.TextColumn("담당자", width="medium"),
     "점수": st.column_config.ProgressColumn("확신도", format="%.0f%%", min_value=0, max_value=100, width="small"), # 게이지 바 UI
     "매칭근거": st.column_config.TextColumn("매칭근거", width="large"),
 }
