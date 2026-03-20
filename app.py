@@ -28,7 +28,7 @@ REQUIRED_COLS_MAP = {
     "담당자": ["담당자", "처리자", "PIC", "Person"],
 }
 
-@st.cache_data(show_spinner="📂 데이터 로딩 중...")
+@st.cache_data(show_spinner="☁️ 데이터 로딩 중...")
 def load_data():
     try:
         df = pd.read_excel(DATA_FILE, engine="openpyxl")
@@ -54,16 +54,17 @@ def load_data():
     return df, col_map
 
 # ──────────────────────────────────────────────
-# 2. 공통 테이블 설정
+# 2. 공통 테이블 설정 (UI 개선의 핵심)
 # ──────────────────────────────────────────────
+# 💡 데이터프레임의 실제 열 이름과 일치하도록 정의함
 COLUMN_CONFIG = {
     "구분": st.column_config.TextColumn("구분", width="small"),
     "계좌번호": st.column_config.TextColumn("계좌번호", width="medium"),
     "거래일자": st.column_config.TextColumn("거래일자", width="small"),
-    "금액": st.column_config.TextColumn("금액", width="small"),
+    "금액": st.column_config.NumberColumn("금액", format="%d", width="small"), # 콤마 자동 생성
     "과거내역": st.column_config.TextColumn("과거내역", width="large"),
     "담당자": st.column_config.TextColumn("담당자", width="small"),
-    "점수": st.column_config.NumberColumn("점수", format="%.1f", width="small"),
+    "점수": st.column_config.ProgressColumn("확신도", format="%.0f%%", min_value=0, max_value=100, width="small"), # 게이지 바 UI
     "매칭근거": st.column_config.TextColumn("매칭근거", width="large"),
 }
 
@@ -86,7 +87,7 @@ def infer_person(df, col_map, input_category, input_account, input_desc):
         db_desc = str(row[c_desc]).lower()
         
         matched_cnt = sum(1 for t in input_tokens if t in db_desc)
-        kw_sim = matched_cnt / len(input_tokens)
+        kw_sim = matched_cnt / len(input_tokens) if len(input_tokens) > 0 else 0
         
         if input_desc.strip() == db_desc.strip():
             kw_sim = 1.0; reasons.append("내역 완전 일치🎯")
@@ -118,7 +119,6 @@ def infer_person(df, col_map, input_category, input_account, input_desc):
     if not records: return None
     return pd.DataFrame(records).sort_values(["점수", "거래일자"], ascending=False)
 
-# 💡 리포트 생성 함수 원상 복구
 def generate_report(df, col_map):
     c_cat, c_desc, c_person, c_date = col_map["구분"], col_map["내역"], col_map["담당자"], col_map.get("날짜")
     
@@ -156,10 +156,8 @@ def main():
 
     tab1, tab2 = st.tabs(["🎯 실시간 추론 및 조회", "📊 주요 담당자 리포트"])
 
-    # ---------------- 탭 1: 추론 및 조회 ----------------
     with tab1:
         if submitted:
-            # [케이스 A] 담당자 조회 모드 (점수, 근거 제외)
             if input_pic.strip():
                 st.subheader(f"👤 [{input_pic.strip()}] 담당자 내역 조회")
                 f_df = df[df[col_map["담당자"]].str.contains(input_pic.strip(), na=False)].copy()
@@ -171,17 +169,16 @@ def main():
                 if f_df.empty:
                     st.warning("검색 결과가 없습니다.")
                 else:
+                    # 💡 UI 고정을 위해 컬럼명 통일 (rename)
                     f_df = f_df.rename(columns={
                         col_map["구분"]: "구분", col_map["계좌번호"]: "계좌번호", 
                         col_map["내역"]: "과거내역", col_map["담당자"]: "담당자", col_map["금액"]: "금액"
                     })
                     f_df["거래일자"] = f_df[col_map["날짜"]].dt.strftime('%Y-%m-%d') if col_map["날짜"] else "-"
-                    f_df["금액"] = f_df["금액"].apply(lambda x: f"{int(x):,}")
                     
                     view_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자"]
                     st.dataframe(f_df[view_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
 
-            # [케이스 B] 내역 기반 추론 모드 (점수, 근거 포함)
             elif input_desc.strip():
                 res_df = infer_person(df, col_map, cat_value, input_account, input_desc)
                 if res_df is not None:
@@ -195,8 +192,8 @@ def main():
                     st.divider()
                     st.subheader("📋 참고할 유사 사례 (Top 10)")
                     temp_df = res_df.head(10).copy()
-                    temp_df["금액"] = temp_df["금액"].apply(lambda x: f"{int(x):,}")
                     
+                    # 💡 컬럼 순서 및 구성 고정
                     infer_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자", "점수", "매칭근거"]
                     st.dataframe(temp_df[infer_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
                 else:
@@ -206,14 +203,11 @@ def main():
         else:
             st.info("왼쪽 사이드바에서 검색 조건을 입력하세요.")
 
-    # ---------------- 탭 2: 통계 리포트 ----------------
-    # 💡 탭 2 내용 완벽히 복구됨
     with tab2:
         st.subheader("📈 구분(공장)별 주요 업무 분장 현황")
-        st.write("과거 1년 동안의 거래를 분석하여, 구분별로 가장 많이 처리한 담당자를 자동으로 요약한 리포트입니다.")
+        st.write("과거 1년 동안의 거래를 분석하여 요약한 리포트입니다.")
         
         report_data = generate_report(df, col_map)
-        
         factories = ["전체"] + list(report_data["구분(공장)"].unique())
         selected_factory = st.selectbox("구분(공장) 필터", factories)
         
@@ -222,7 +216,10 @@ def main():
         else:
             filtered_report = report_data[report_data["구분(공장)"] == selected_factory]
         
-        st.dataframe(filtered_report, use_container_width=True, hide_index=True)
+        # 리포트용 별도 설정
+        st.dataframe(filtered_report, use_container_width=True, hide_index=True, column_config={
+            "최근1년처리건수": st.column_config.NumberColumn(format="%d")
+        })
         
         csv = filtered_report.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
