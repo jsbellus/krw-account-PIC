@@ -28,7 +28,7 @@ REQUIRED_COLS_MAP = {
     "담당자": ["담당자", "처리자", "PIC", "Person"],
 }
 
-@st.cache_data(show_spinner="☁️ 데이터 로딩 중...")
+@st.cache_data(show_spinner="📂 데이터 로딩 중...")
 def load_data():
     try:
         df = pd.read_excel(DATA_FILE, engine="openpyxl")
@@ -49,22 +49,23 @@ def load_data():
 
     for key in ["구분", "계좌번호", "내역", "담당자"]:
         df[col_map[key]] = df[col_map[key]].astype(str).fillna("").str.strip()
+    
+    # 금액을 정수형 숫자로 유지 (콤마 처리는 UI 설정에서 담당)
     df[col_map["금액"]] = pd.to_numeric(df[col_map["금액"]], errors="coerce").fillna(0).astype(int)
     
     return df, col_map
 
 # ──────────────────────────────────────────────
-# 2. 공통 테이블 설정 (UI 개선의 핵심)
+# 2. 공통 테이블 설정 (금액 콤마 및 너비 고정)
 # ──────────────────────────────────────────────
-# 💡 데이터프레임의 실제 열 이름과 일치하도록 정의함
 COLUMN_CONFIG = {
     "구분": st.column_config.TextColumn("구분", width="small"),
     "계좌번호": st.column_config.TextColumn("계좌번호", width="medium"),
     "거래일자": st.column_config.TextColumn("거래일자", width="small"),
-    "금액": st.column_config.NumberColumn("금액", format="%d", width="small"), # 콤마 자동 생성
+    "금액": st.column_config.NumberColumn("금액", format="%,d", width="medium"), # %,d 가 천 단위 콤마 핵심
     "과거내역": st.column_config.TextColumn("과거내역", width="medium"),
-    "담당자": st.column_config.TextColumn("담당자", width="medium"),
-    "점수": st.column_config.ProgressColumn("확신도", format="%.0f%%", min_value=0, max_value=100, width="small"), # 게이지 바 UI
+    "담당자": st.column_config.TextColumn("담당자", width="small"),
+    "점수": st.column_config.ProgressColumn("확신도", format="%.0f%%", min_value=0, max_value=100, width="small"),
     "매칭근거": st.column_config.TextColumn("매칭근거", width="large"),
 }
 
@@ -169,13 +170,13 @@ def main():
                 if f_df.empty:
                     st.warning("검색 결과가 없습니다.")
                 else:
-                    # 💡 UI 고정을 위해 컬럼명 통일 (rename)
                     f_df = f_df.rename(columns={
                         col_map["구분"]: "구분", col_map["계좌번호"]: "계좌번호", 
                         col_map["내역"]: "과거내역", col_map["담당자"]: "담당자", col_map["금액"]: "금액"
                     })
                     f_df["거래일자"] = f_df[col_map["날짜"]].dt.strftime('%Y-%m-%d') if col_map["날짜"] else "-"
                     
+                    # 💡 주의: 여기서 금액을 문자열로 바꾸는 코드를 삭제함 (정렬 및 콤마 유지를 위함)
                     view_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자"]
                     st.dataframe(f_df[view_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
 
@@ -193,7 +194,7 @@ def main():
                     st.subheader("📋 참고할 유사 사례 (Top 10)")
                     temp_df = res_df.head(10).copy()
                     
-                    # 💡 컬럼 순서 및 구성 고정
+                    # 💡 주의: 여기서 금액을 문자열로 바꾸는 코드를 삭제함 (정렬 및 콤마 유지를 위함)
                     infer_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자", "점수", "매칭근거"]
                     st.dataframe(temp_df[infer_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
                 else:
@@ -216,7 +217,6 @@ def main():
         else:
             filtered_report = report_data[report_data["구분(공장)"] == selected_factory]
         
-        # 리포트용 별도 설정
         st.dataframe(filtered_report, use_container_width=True, hide_index=True, column_config={
             "최근1년처리건수": st.column_config.NumberColumn(format="%d")
         })
