@@ -64,7 +64,7 @@ COLUMN_CONFIG = {
     "거래일자": st.column_config.TextColumn("거래일자", width="small"),
     "금액": st.column_config.NumberColumn("금액", format="%,d", width="medium"), # %,d 가 천 단위 콤마 핵심
     "과거내역": st.column_config.TextColumn("과거내역", width="medium"),
-    "담당자": st.column_config.TextColumn("담당자", width="small"),
+    "담당자": st.column_config.TextColumn("담당자", width="medium"),
     "점수": st.column_config.ProgressColumn("확신도", format="%.0f%%", min_value=0, max_value=100, width="small"),
     "매칭근거": st.column_config.TextColumn("매칭근거", width="large"),
 }
