@@ -155,7 +155,8 @@ def main():
         input_pic = st.text_input("담당자 (조회 시)")
         submitted = st.form_submit_button("🔎 실행", use_container_width=True)
 
-    tab1, tab2 = st.tabs(["🎯 실시간 추론 및 조회", "📊 주요 담당자 리포트"])
+    # tab1, tab2 = st.tabs(["🎯 실시간 추론 및 조회", "📊 주요 담당자 리포트"])
+    tab1 = st.tabs(["🎯 실시간 추론 및 조회"])
 
     with tab1:
         if submitted:
@@ -204,30 +205,30 @@ def main():
         else:
             st.info("왼쪽 사이드바에서 검색 조건을 입력하세요.")
 
-    with tab2:
-        st.subheader("📈 구분(공장)별 주요 업무 분장 현황")
-        st.write("과거 1년 동안의 거래를 분석하여 요약한 리포트입니다.")
+    # with tab2:
+    #     st.subheader("📈 구분(공장)별 주요 업무 분장 현황")
+    #     st.write("과거 1년 동안의 거래를 분석하여 요약한 리포트입니다.")
         
-        report_data = generate_report(df, col_map)
-        factories = ["전체"] + list(report_data["구분(공장)"].unique())
-        selected_factory = st.selectbox("구분(공장) 필터", factories)
+    #     report_data = generate_report(df, col_map)
+    #     factories = ["전체"] + list(report_data["구분(공장)"].unique())
+    #     selected_factory = st.selectbox("구분(공장) 필터", factories)
         
-        if selected_factory == "전체":
-            filtered_report = report_data
-        else:
-            filtered_report = report_data[report_data["구분(공장)"] == selected_factory]
+    #     if selected_factory == "전체":
+    #         filtered_report = report_data
+    #     else:
+    #         filtered_report = report_data[report_data["구분(공장)"] == selected_factory]
         
-        st.dataframe(filtered_report, use_container_width=True, hide_index=True, column_config={
-            "최근1년처리건수": st.column_config.NumberColumn(format="%d")
-        })
+    #     st.dataframe(filtered_report, use_container_width=True, hide_index=True, column_config={
+    #         "최근1년처리건수": st.column_config.NumberColumn(format="%d")
+    #     })
         
-        csv = filtered_report.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label="📥 리포트 엑셀(CSV) 다운로드",
-            data=csv,
-            file_name=f"담당자_리포트_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv",
-        )
+    #     csv = filtered_report.to_csv(index=False).encode('utf-8-sig')
+    #     st.download_button(
+    #         label="📥 리포트 엑셀(CSV) 다운로드",
+    #         data=csv,
+    #         file_name=f"담당자_리포트_{datetime.now().strftime('%Y%m%d')}.csv",
+    #         mime="text/csv",
+    #     )
 
 if __name__ == "__main__":
     main()
