@@ -70,7 +70,7 @@ COLUMN_CONFIG = {
 }
 
 # ──────────────────────────────────────────────
-# 3. 추론 및 통계 알고리즘
+# 3. 추론 알고리즘
 # ──────────────────────────────────────────────
 def infer_person(df, col_map, input_category, input_account, input_desc):
     today = datetime.now()
@@ -120,23 +120,24 @@ def infer_person(df, col_map, input_category, input_account, input_desc):
     if not records: return None
     return pd.DataFrame(records).sort_values(["점수", "거래일자"], ascending=False)
 
-def generate_report(df, col_map):
-    c_cat, c_desc, c_person, c_date = col_map["구분"], col_map["내역"], col_map["담당자"], col_map.get("날짜")
-    
-    one_year_ago = datetime.now() - timedelta(days=365)
-    if c_date:
-        report_df = df[df[c_date] >= one_year_ago].copy()
-    else:
-        report_df = df.copy()
-
-    report_df["내역유형"] = report_df[c_desc].apply(lambda x: " ".join(str(x).split()[:2]))
-    summary = report_df.groupby([c_cat, "내역유형", c_person]).size().reset_index(name="처리건수")
-    
-    idx = summary.groupby([c_cat, "내역유형"])["처리건수"].idxmax()
-    final_report = summary.loc[idx].sort_values([c_cat, "처리건수"], ascending=[True, False])
-    
-    final_report.columns = ["구분(공장)", "주요내역패턴", "주요담당자", "최근1년처리건수"]
-    return final_report
+# 💡 [주석 처리] 리포트 생성 함수
+# def generate_report(df, col_map):
+#     c_cat, c_desc, c_person, c_date = col_map["구분"], col_map["내역"], col_map["담당자"], col_map.get("날짜")
+#     
+#     one_year_ago = datetime.now() - timedelta(days=365)
+#     if c_date:
+#         report_df = df[df[c_date] >= one_year_ago].copy()
+#     else:
+#         report_df = df.copy()
+#
+#     report_df["내역유형"] = report_df[c_desc].apply(lambda x: " ".join(str(x).split()[:2]))
+#     summary = report_df.groupby([c_cat, "내역유형", c_person]).size().reset_index(name="처리건수")
+#     
+#     idx = summary.groupby([c_cat, "내역유형"])["처리건수"].idxmax()
+#     final_report = summary.loc[idx].sort_values([c_cat, "처리건수"], ascending=[True, False])
+#     
+#     final_report.columns = ["구분(공장)", "주요내역패턴", "주요담당자", "최근1년처리건수"]
+#     return final_report
 
 # ──────────────────────────────────────────────
 # 4. 메인 UI
@@ -155,7 +156,8 @@ def main():
         input_pic = st.text_input("담당자 (조회 시)")
         submitted = st.form_submit_button("🔎 실행", use_container_width=True)
 
-    tab1, tab2 = st.tabs(["🎯 실시간 추론 및 조회", "📊 주요 담당자 리포트"])
+    # 💡 [수정] 탭을 하나만 생성 (리포트 탭 제거)
+    tab1, = st.tabs(["🎯 실시간 추론 및 조회"])
 
     with tab1:
         if submitted:
@@ -176,7 +178,6 @@ def main():
                     })
                     f_df["거래일자"] = f_df[col_map["날짜"]].dt.strftime('%Y-%m-%d') if col_map["날짜"] else "-"
                     
-                    # 💡 주의: 여기서 금액을 문자열로 바꾸는 코드를 삭제함 (정렬 및 콤마 유지를 위함)
                     view_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자"]
                     st.dataframe(f_df[view_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
 
@@ -194,7 +195,6 @@ def main():
                     st.subheader("📋 참고할 유사 사례 (Top 10)")
                     temp_df = res_df.head(10).copy()
                     
-                    # 💡 주의: 여기서 금액을 문자열로 바꾸는 코드를 삭제함 (정렬 및 콤마 유지를 위함)
                     infer_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자", "점수", "매칭근거"]
                     st.dataframe(temp_df[infer_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
                 else:
@@ -204,30 +204,31 @@ def main():
         else:
             st.info("왼쪽 사이드바에서 검색 조건을 입력하세요.")
 
-    with tab2:
-        st.subheader("📈 구분(공장)별 주요 업무 분장 현황")
-        st.write("과거 1년 동안의 거래를 분석하여 요약한 리포트입니다.")
-        
-        report_data = generate_report(df, col_map)
-        factories = ["전체"] + list(report_data["구분(공장)"].unique())
-        selected_factory = st.selectbox("구분(공장) 필터", factories)
-        
-        if selected_factory == "전체":
-            filtered_report = report_data
-        else:
-            filtered_report = report_data[report_data["구분(공장)"] == selected_factory]
-        
-        st.dataframe(filtered_report, use_container_width=True, hide_index=True, column_config={
-            "최근1년처리건수": st.column_config.NumberColumn(format="%d")
-        })
-        
-        csv = filtered_report.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label="📥 리포트 엑셀(CSV) 다운로드",
-            data=csv,
-            file_name=f"담당자_리포트_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv",
-        )
+    # 💡 [주석 처리] 리포트 탭 UI 전체
+    # with tab2:
+    #     st.subheader("📈 구분(공장)별 주요 업무 분장 현황")
+    #     st.write("과거 1년 동안의 거래를 분석하여 요약한 리포트입니다.")
+    #     
+    #     report_data = generate_report(df, col_map)
+    #     factories = ["전체"] + list(report_data["구분(공장)"].unique())
+    #     selected_factory = st.selectbox("구분(공장) 필터", factories)
+    #     
+    #     if selected_factory == "전체":
+    #         filtered_report = report_data
+    #     else:
+    #         filtered_report = report_data[report_data["구분(공장)"] == selected_factory]
+    #     
+    #     st.dataframe(filtered_report, use_container_width=True, hide_index=True, column_config={
+    #         "최근1년처리건수": st.column_config.NumberColumn(format="%d")
+    #     })
+    #     
+    #     csv = filtered_report.to_csv(index=False).encode('utf-8-sig')
+    #     st.download_button(
+    #         label="📥 리포트 엑셀(CSV) 다운로드",
+    #         data=csv,
+    #         file_name=f"담당자_리포트_{datetime.now().strftime('%Y%m%d')}.csv",
+    #         mime="text/csv",
+    #     )
 
 if __name__ == "__main__":
     main()
