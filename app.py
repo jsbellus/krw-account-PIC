@@ -192,8 +192,8 @@ def main():
                     m3.metric("📊 신뢰도", "높음" if top["점수"] >= 70 else "보통" if top["점수"] >= 40 else "낮음")
                     
                     st.divider()
-                    st.subheader("📋 참고할 유사 사례 (Top 10)")
-                    temp_df = res_df.head(10).copy()
+                    st.subheader("📋 참고할 유사 사례 (Top 20)")
+                    temp_df = res_df.head(20).copy()
                     
                     infer_cols = ["구분", "계좌번호", "거래일자", "금액", "과거내역", "담당자", "점수", "매칭근거"]
                     st.dataframe(temp_df[infer_cols], use_container_width=True, hide_index=True, column_config=COLUMN_CONFIG)
